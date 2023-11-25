@@ -1,5 +1,7 @@
 
 
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace Roleplay{
@@ -89,6 +91,7 @@ namespace Roleplay{
                 this.number_of_words = word_data.number_of_words;
                 this.palindromes = word_data.palindromes;
                 this.favorite_words = word_data.favorite_words;
+                this.average_wordlength = word_data.average_wordlength;
             }   
             
             if(alliteration_data != null){
@@ -111,6 +114,7 @@ namespace Roleplay{
         public static RoleplayStatistics operator +(RoleplayStatistics one, RoleplayStatistics two){
 
             //Defining Local functions to make this easy
+            #pragma warning disable 8714
             Dictionary<T, long> AddDictionaries<T>(Dictionary<T, long> _one, Dictionary<T, long> _two){
                 Dictionary<T, long> favorite_character = new Dictionary<T, long>();
 
@@ -128,6 +132,7 @@ namespace Roleplay{
                 
                 return favorite_character;
             }
+            #pragma warning restore
 
             //Okay, well let's just bang this out one at a time
             //number of replies is easy
@@ -169,10 +174,15 @@ namespace Roleplay{
             
             //We can find our favorite words by just finding our top three
             List<string> favorite = new List<string>();
-            IEnumerable<KeyValuePair<string, long>> top_three = statistics.word_counter.OrderByDescending(kv => kv.Value).Take(3);
-            foreach(KeyValuePair<string, long> pair in top_three){
-                favorite.Add(pair.Key);
-            }
+                IEnumerable<KeyValuePair<string, long>> top_three = statistics.word_counter.OrderByDescending(kv => kv.Value);
+                foreach(KeyValuePair<string, long> pair in top_three){
+                    if(!PublicArrays.common_words.Contains(pair.Key.ToLower()) && !RoleplayMessageParser.MessageParser.IsCharacter(pair.Key)){
+                        favorite.Add(pair.Key);
+                    }
+                    if(favorite.Count == 3){
+                        break;
+                    }
+                }
             statistics.favorite_words = favorite.ToArray();
 
             //Alliteration
@@ -206,9 +216,10 @@ namespace Roleplay{
 
     public static class RoleplayMessageParser{
 
-        public static List<Thread> threads;
-
         public class MessageParser{
+
+            public static int instances = 0;
+            public int instance = 0;
 
             public RoleplayStatistics statistics;
             public string message;
@@ -218,6 +229,8 @@ namespace Roleplay{
                 statistics = new RoleplayStatistics();
                 this.message = message;
                 this.id = id;
+                instance = instances;
+                instances++;
 
             }
 
@@ -230,9 +243,11 @@ namespace Roleplay{
                         char c = s[0]; //I am going to be naive here
                         try{
                             alliteritions[c]++;
+                        #pragma warning disable 0168
                         }catch(Exception e){
                             alliteritions.Add(c, 1);
                         }
+                        #pragma warning restore
                     }
                 }
 
@@ -243,13 +258,15 @@ namespace Roleplay{
                 long sum = 0;
                 long max = 0;
                 foreach(KeyValuePair<char, long> pair in alliteration){
+                    sum += pair.Value;
                     if(pair.Value > max){
                         max = pair.Value;
                     }
-                    sum += pair.Value;
                 }
+                try{
+                    return max/sum;
 
-                return max/sum;
+                }catch(Exception e){return 0;}
             }
 
             private string GetAlphaNumericOnly(string input){
@@ -263,9 +280,11 @@ namespace Roleplay{
                     string final_word = GetAlphaNumericOnly(word);
                     try{
                         word_counter[final_word]++;
+                    #pragma warning disable 0168
                     }catch(Exception e){
                         word_counter.Add(final_word, 1);
                     }
+                    #pragma warning restore
                 }
 
                 return word_counter;
@@ -281,14 +300,121 @@ namespace Roleplay{
 
             public string[] GetFavoriteWords(Dictionary<string, long> word_counter){
                 List<string> favorite = new List<string>();
-                IEnumerable<KeyValuePair<string, long>> top_three = word_counter.OrderByDescending(kv => kv.Value).Take(3);
+                IEnumerable<KeyValuePair<string, long>> top_three = word_counter.OrderByDescending(kv => kv.Value);
                 foreach(KeyValuePair<string, long> pair in top_three){
-                    favorite.Add(pair.Key);
+                    if(!PublicArrays.common_words.Contains(pair.Key.ToLower()) && !IsCharacter(pair.Key)){
+                        favorite.Add(pair.Key);
+                    }
+                    if(favorite.Count == 3){
+                        break;
+                    }
                 }
                 return favorite.ToArray();
             }
 
+            public static bool IsCharacter(string name){
+                List<Cat> cats = DatabaseReader.LoadCats();
+                foreach(Cat cat in cats){
+                    if(cat.GetName().ToLower() == name){
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            private string GetPuncuationOnly(string input){
+                // Define a string containing all punctuation characters
+                string punctuation = "!\"'(),-.:;?";
+
+                // Initialize an empty string to store the punctuation characters
+                string result = "";
+
+                // Loop through each character in the input string
+                foreach (char c in input){
+                    // Check if the character is a punctuation character
+                    if (punctuation.Contains(c)){
+                        // Append the punctuation character to the result string
+                        result += c;
+                    }
+                }
+
+                return result;
+            }
+
+            //Our words should be combined with puncuations
+            public Dictionary<char, long> GetPuncuation(string[] words){
+                Dictionary<char, long> punctuation = new Dictionary<char, long>();
+                foreach(string s in words){
+                    foreach(char c in GetPuncuationOnly(s).ToCharArray()){
+                        try{
+                            punctuation[c]++;
+                        #pragma warning disable 0168
+                        } catch(Exception e){
+                            punctuation.Add(c, 1);
+                        }
+                        #pragma warning restore
+                    }
+                }
+
+                return punctuation;
+            }
+
+            public Dictionary<string, long> GetFavoriteCharacter(string[] words){
+                List<string> ignore = new List<string>(new string[]{" they ", " them ", " their ", " theirs ", " theirself ", " he ", " him ", " his ", " himself ", " she ", " her ", " hers ", " herself ", " it ", " its ", " itself "});
+                Dictionary<string, long> character = new Dictionary<string, long>();
+
+                long attempts = 0;
+                while(true){
+                    string name = GetNameBrute(words, ignore);
+                    if(name == ""){
+                        return character;
+                    }
+                    try{
+                        Cat cat = DatabaseReader.LoadCat(name);
+                        if(cat.user == id){
+                            character.Add(name, 1);
+                            return character;
+                        }
+                    } catch(Exception e){}finally {
+                        ignore.Add(name);
+                    }
+                }
+            }
+
+            public static string GetNameBrute(IEnumerable<string> doc_string, IEnumerable<string> ignore){
+                Dictionary<string, int> nouns = new Dictionary<string, int>();
+
+                foreach(string s in doc_string){
+                    foreach(Match m in Regex.Matches(s, @"\b\b[A-Z][a-z]+\b")){
+                        string value = m.Value;
+                        if(!nouns.ContainsKey(value)){
+                            nouns.Add(value, 1);
+                        } else {
+                            nouns[value] += 1;
+                        }
+                    }
+                }
+
+                //Now we're going to assume the noun used most is the name. Niave, but it should be true
+                //Also, we're going to ignore any and all pronouns
+                string noun = "";
+                int max = 0;
+                foreach(KeyValuePair<string, int> pair in nouns){
+                    if(!Regex.Match(pair.Key, string.Join("|", ignore)).Success){
+                        if(pair.Value > max){
+                            noun = pair.Key;
+                            max = pair.Value;
+                        }
+                    }
+                }
+                return noun;
+            }
+
             public void Start(){
+                Logger.Log($"Thread {instance}: Started message parsing.");
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
                 //parse message
                 string[] words = message.Split(" ");
 
@@ -306,19 +432,27 @@ namespace Roleplay{
                 statistics.average_unique_words = statistics.word_counter.Count;
                 statistics.average_wordlength = GetAverageWordLength(words);
 
-                //statistics.favorite_character = I'm ignoring this for now
+                statistics.favorite_character = GetFavoriteCharacter(words);
                 statistics.favorite_words = GetFavoriteWords(statistics.word_counter);
                 statistics.longest_message_length = words.Length;
                 statistics.number_of_words = words.Length;
                 // statistics.palindromes = I'm ignoring this for nowwww
-                // statistics.punctionation_counter = Same for this
+                statistics.punctionation_counter = GetPuncuation(words);
 
 
                 //Fill out statistics struct
-
+                Stopwatch waiting = new Stopwatch();
+                waiting.Start();
                 //Save to database
                 lock(RoleplayDatabase.lock_object){
-                    RoleplayDatabase.Save(statistics, id);
+                    try{
+                        RoleplayDatabase.Save(statistics, id);
+                    }catch(Exception e){
+                        Logger.Error($"Error in thread {instance} (Message Parser): " + e.Message);
+                    }
+                    waiting.Stop();
+                    stopwatch.Stop();
+                    Logger.Log($"Thread {instance}: Finished parsing message. Took ${stopwatch.ElapsedMilliseconds} milliseconds ({waiting.ElapsedMilliseconds} spent waiting).");
                 }
             }
 

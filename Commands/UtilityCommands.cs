@@ -236,4 +236,27 @@ public class StringCommands : ApplicationCommandModule{
 
     }
 
+    [SlashCommandPermissions(Permissions.Administrator)]
+    [SlashCommand("dump_log", "Dumps the log into a text file and resets it.")]
+    public async Task Log(InteractionContext ctx){
+        if(ctx.Channel.GuildId == null && ctx.User.Id != 215975377770774528){
+            await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("This Command is not enabled in DMs"));
+            Logger.LogCommand("dump_log", ctx, Status.FAILURE);
+
+            return;
+        }
+
+        DiscordInteractionResponseBuilder builder = new DiscordInteractionResponseBuilder();
+        builder.WithContent("Meow! Here's the log file.");
+
+        using(FileStream fs = new FileStream("Logger/log.txt", FileMode.Open)){
+            builder.AddFile("Logger/log.txt", fs);
+            await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, builder);
+        }
+
+        Logger.Flush();
+
+    }
+
+    
 }

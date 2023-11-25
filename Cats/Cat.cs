@@ -140,25 +140,15 @@ public class Cat{
     }
 
     public string GetGenderString(){
-        switch(gender){
-            case Gender.male_one:
-                return "Male (He/Him)";
-            case Gender.male_two:
-                return "Male (He/They)";
-            case Gender.female_one:
-                return "Female (She/Her)";
-            case Gender.female_two:
-                return "Female (She/They)";
-            case Gender.non_binary:
-                return "Non-binary (They/Them)";
-            case Gender.non_binary_two:
-                return "Non-binary (It/Its)";
-            case Gender.female_three:
-                return "Femme Aligned (She/It)";
-            default:
-                return "Other (Please ask!)";
-
+        try{
+            return GetGenderString((Gender)gender);
+        }catch(Exception e){
+            return "N/A";
         }
+    }
+
+    public static string GetGenderString(Gender gender){
+        return gender.CustomToString();
     }
 
     public static string GetClanString(Clan? clan){
@@ -169,6 +159,27 @@ public class Cat{
                 return "Cats of the Sandswept Prairie";
             case Clan.Mist:
                 return "Cats of the Thickening Mist";
+            case Clan.Rogue:
+                return "Rogue";
+            case Clan.Loner:
+                return "Loner";
+            case Clan.Kittypet:
+                return "Kittypet";
+            case Clan.None:
+                return "None";
+            default:
+                return "None"; // Handle default case if needed
+        }
+    }
+
+    public static string GetClanStringShort(Clan? clan){
+        switch(clan){
+            case Clan.Woodlands:
+                return "Woodlands";
+            case Clan.Praire:
+                return "Prairie";
+            case Clan.Mist:
+                return "Mist";
             case Clan.Rogue:
                 return "Rogue";
             case Clan.Loner:

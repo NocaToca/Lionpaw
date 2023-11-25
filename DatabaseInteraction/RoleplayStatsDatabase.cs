@@ -2,6 +2,7 @@
 
 using Newtonsoft.Json;
 
+
 namespace Roleplay{
 
     //This is probably the most robust database, and we have a bunch of helper classes to store information
@@ -147,6 +148,9 @@ namespace Roleplay{
         [JsonProperty("palindromes")]
         public List<string> palindromes = new List<string>();
 
+        [JsonProperty("average_word_length")]
+        public double average_wordlength;
+
         public class WordCounter{
             [JsonProperty("word")]
             public string word;
@@ -161,15 +165,16 @@ namespace Roleplay{
             }
         }
         [JsonConstructor]
-        public WordStorage(double average_unique_words, long number_of_words, List<WordCounter> word_counters, string[] favorite_words, List<string> palindromes){
+        public WordStorage(double average_unique_words, long number_of_words, List<WordCounter> word_counters, string[] favorite_words, List<string> palindromes, double average_word_length){
             this.average_unique_words = average_unique_words;
             this.number_of_words = number_of_words;
             this.word_counters = word_counters;
             this.favorite_words = favorite_words;
             this.palindromes = palindromes;
+            average_wordlength = average_word_length;
         }
 
-        public WordStorage(double average_unique_words, long number_of_words, Dictionary<string, long> word_counters, string[] favorite_words, List<string> palindromes){
+        public WordStorage(double average_unique_words, long number_of_words, Dictionary<string, long> word_counters, string[] favorite_words, List<string> palindromes, double average_word_length){
             this.average_unique_words = average_unique_words;
             this.number_of_words = number_of_words;
             foreach(KeyValuePair<string, long> pair in word_counters){
@@ -177,6 +182,7 @@ namespace Roleplay{
             }
             this.favorite_words = favorite_words;
             this.palindromes = palindromes;
+            average_wordlength = average_word_length;
         }
     }
 
@@ -221,7 +227,8 @@ namespace Roleplay{
             statistics.number_of_words,
             statistics.word_counter,
             statistics.favorite_words,
-            statistics.palindromes);
+            statistics.palindromes,
+            statistics.average_wordlength);
 
             FreeData free_data = new FreeData(statistics.number_of_replies,
             statistics.longest_message_length,
@@ -291,6 +298,7 @@ namespace Roleplay{
                     LoadJSON<PuncuationData>(punctuation_data_path)
                 );
             }catch(Exception e){
+                Logger.Error(e.Message);
                 return null;
             }
             
@@ -335,6 +343,7 @@ namespace Roleplay{
                 return true;
 
             } catch (Exception e){
+                Logger.Error(e.Message);
                 return false;
             }
         }
@@ -346,6 +355,7 @@ namespace Roleplay{
                 return true;
             }
             catch(Exception e){
+                Logger.Error(e.Message);
                 return false;
             }
         }

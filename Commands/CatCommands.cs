@@ -1,15 +1,8 @@
-using System;
 using DSharpPlus;
-using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Attributes;
-using DSharpPlus.EventArgs;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
 using DSharpPlus.Entities;
 using DSharpPlus.SlashCommands;
-using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 public class CatCommands : ApplicationCommandModule {
 
@@ -25,10 +18,14 @@ public class CatCommands : ApplicationCommandModule {
     [Option("Clan", "The clan of the cat.")] Clan clan = Clan.None,
     [Option("AutoFindMember", "Use false if adding somewhere else besides a submissions channel.")] bool auto_find_member = true){
 
+        Status status = Status.ERROR;
         if(ctx.Channel.GuildId == null){
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("This Command is not enabled in DMs"));
             return;
         }
+
+        Stopwatch watch = new Stopwatch();
+        watch.Start();
 
         try{
             bool docs = Regex.IsMatch(link, @"document", RegexOptions.IgnoreCase);
@@ -86,11 +83,21 @@ public class CatCommands : ApplicationCommandModule {
             Cat cat = new Cat(cat_name, cat_age, cat_gender, cat_rank, cat_clan, link, user_id, "none");
 
             DatabaseWriter.SaveCat(cat);
+            await Bot.bot.OnCatAdded(cat, ctx);
+
             await Bot.client.GetSlashCommands().RefreshCommands();
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("Added cat " + name + "!").AddEmbed(cat.BuildEmbed(ctx.Channel.Guild)));
+            status = Status.SUCCESS;
         } catch (Exception e){
-            await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("Problem adding cat: " + e.Message) );
+            Cat cat = new Cat("Temp", 0, Gender.None, Rank.None, Clan.None, link, user.Id, "none");
+            DatabaseWriter.SaveCat(cat);
+            await Bot.client.GetSlashCommands().RefreshCommands();
+
+            await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("Added cat but couldn't parse: " + e.Message).AddEmbed(cat.BuildEmbed(ctx.Channel.Guild)));
+            status = Status.ERROR;
         }
+        watch.Stop();
+        Logger.LogCommand("addcat", ctx, status, watch);
         
     } 
 
@@ -105,7 +112,12 @@ public class CatCommands : ApplicationCommandModule {
     [Option("Rank", "The rank of the cat.")] Rank rank = Rank.None,
     [Option("Clan", "The clan of the cat.")] Clan clan = Clan.None,
     [Option("Gender", "Gender to change to.")] Gender gender = Gender.None){
+        Status status = Status.ERROR;
+        Stopwatch watch = new Stopwatch();
+        watch.Start();
+
         Cat cat = DatabaseReader.LoadCat(name);
+        await Bot.bot.OnCatRemoved(cat,ctx);
         DatabaseWriter.RemoveCat(name);
 
         if(ctx.Channel.GuildId == null){
@@ -151,16 +163,27 @@ public class CatCommands : ApplicationCommandModule {
         }
 
         DatabaseWriter.SaveCat(cat);
+        await Bot.bot.OnCatAdded(cat, ctx);
+
         await Bot.client.GetSlashCommands().RefreshCommands();
         // CatChoiceProvider.RefreshDatabase();
 
+        status = Status.SUCCESS;
+
         await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("Updated cat " + name + "!"));
+
+        watch.Stop();
+        Logger.LogCommand("editcat", ctx, status, watch);
     }
 
     [SlashCommand("removecat", "Removes the specified cat from the database")]
     public async Task RemoveCat(InteractionContext ctx, 
     [ChoiceProvider(typeof(CatChoiceProvider))]
     [Option("Name", "The name of the cat")] string name){
+        Status status = Status.SUCCESS;
+        Stopwatch watch = new Stopwatch();
+        watch.Start();
+
         string content = "";
         Cat cat = DatabaseReader.LoadCat(name);
 
@@ -173,40 +196,61 @@ public class CatCommands : ApplicationCommandModule {
             if(cat.user != ctx.User.Id){
                 Permissions permissions = ctx.Guild.GetMemberAsync(ctx.User.Id).Result.Permissions;
                 if(!permissions.HasPermission(Permissions.Administrator)){
+                    status = Status.FAILURE;
+                    watch.Stop();
+                    Logger.LogCommand("removecat", ctx, status, watch);
+
                     throw new InvalidOperationException("You cannot remove cats that are not yours!");
                 }
             }
 
         }catch(InvalidOperationException e){
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent(e.Message));
+            status = Status.ERROR;
+            watch.Stop();
+            Logger.LogCommand("removecat", ctx, status, watch);
+
             return;
         }
 
         if(DatabaseWriter.RemoveCat(name)){
+            await Bot.bot.OnCatRemoved(cat,ctx);
             content = $"Succesfully removed {name}!";
             await Bot.client.GetSlashCommands().RefreshCommands();
             // CatChoiceProvider.RefreshDatabase();
         } else {
             content = $"Problem in trying to remove {name}.";
+            status = Status.FAILURE;
         }
         
 
         await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent(content));
+
+        watch.Stop();
+        Logger.LogCommand("removecat", ctx, status, watch);
+
         
     }
 
     [SlashCommand("set_available", "Tells others that your cat is available to RP with!")]
     public async Task SetAvailable(InteractionContext ctx,
+    [ChoiceProvider(typeof(CatChoiceProvider))]
     [Option("name", "The name of your cat!")] string name){
+
+        Status status = Status.SUCCESS;
 
         if(ctx.Channel.GuildId == null){
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("This Command is not enabled in DMs"));
+            status = Status.FAILURE;
+            Logger.LogCommand("set_available", ctx, status);
             return;
         }
 
         Cat cat = DatabaseReader.LoadCat(name);
         if(cat.user != ctx.User.Id){
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("You cannot do this for a cat that's not yours!"));
+            status = Status.FAILURE;
+            Logger.LogCommand("set_available", ctx, status);
             return;
         }
 
@@ -215,7 +259,7 @@ public class CatCommands : ApplicationCommandModule {
 
         await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent($"Succesfully changed {cat.GetName()}'s looking for RP status to {cat.avaible_for_rp}!"));
 
-
+        Logger.LogCommand("set_available", ctx, status);
     }
 
     [SlashCommandPermissions(Permissions.Administrator)]
@@ -224,6 +268,8 @@ public class CatCommands : ApplicationCommandModule {
     [Option("Time", "The amount you want to age up. Default is 1 Moon")] long time = 1){
         if(ctx.Channel.GuildId == null){
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("This Command is not enabled in DMs"));
+            Logger.LogCommand("ageup", ctx, Status.FAILURE);
+
             return;
         }
 
@@ -293,6 +339,7 @@ public class CatCommands : ApplicationCommandModule {
         embed.WithTimestamp(DateTimeOffset.Now);
 
         await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embed.Build()));
+        Logger.LogCommand("ageup", ctx, Status.SUCCESS);
     }
 
     [SlashCommandPermissions(DSharpPlus.Permissions.Administrator)]
@@ -303,6 +350,8 @@ public class CatCommands : ApplicationCommandModule {
     [Option("Newname", "The new warrior name of the cat. Leave blank for kits->paws")] string new_name = ""){
         if(ctx.Channel.GuildId == null){
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("This Command is not enabled in DMs"));
+            Logger.LogCommand("rankup", ctx, Status.FAILURE);
+
             return;
         }
 
@@ -348,6 +397,7 @@ public class CatCommands : ApplicationCommandModule {
         };
 
         await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embed.Build()));
+        Logger.LogCommand("rankup", ctx, Status.SUCCESS);
 
 
     }

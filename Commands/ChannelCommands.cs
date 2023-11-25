@@ -1,16 +1,7 @@
-using System;
 using DSharpPlus;
-using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Attributes;
-using DSharpPlus.EventArgs;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
 using DSharpPlus.Entities;
-using Newtonsoft.Json;
 using DSharpPlus.SlashCommands;
 using System.Text.RegularExpressions;
-using System.Runtime.CompilerServices;
 
 namespace Lionpaw{
 
@@ -115,8 +106,10 @@ namespace Lionpaw{
                     foreach(PermissionType type in get_permissions){
                         description += type.ToString() + "\n";
                     }
+        
                 } catch (Exception e){
                     await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("You need to register the channel before viewing!"));
+                    Logger.Error(e.Message);
                 }
 
                 DiscordEmbedBuilder embed = new DiscordEmbedBuilder(){

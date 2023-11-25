@@ -1,16 +1,8 @@
-using System;
+
 using DSharpPlus;
-using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Attributes;
-using DSharpPlus.EventArgs;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
 using DSharpPlus.Entities;
 using DSharpPlus.SlashCommands;
-using System.Security.Cryptography.X509Certificates;
-using System.Drawing;
-using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 [SlashCommandGroup("show", "Shows relative information about cats")]
 public class DisplayCommands : ApplicationCommandModule {
@@ -18,6 +10,9 @@ public class DisplayCommands : ApplicationCommandModule {
     //Filters by rank, clan and user
     //User will be the bot if it is not supplied! The bot doesn't have any cats, and will be the same in the ctx, so it's easily detectable
     public async Task DisplayCatsWithParams(InteractionContext ctx, Rank rank, Clan clan, DiscordUser user, int page, bool open_to_rp = false){
+
+        Stopwatch watch = new Stopwatch();
+        watch.Start();
 
         //Grab all cats then make our dummy list
         List<Cat> all_cats = DatabaseReader.LoadCats();
@@ -150,6 +145,9 @@ public class DisplayCommands : ApplicationCommandModule {
         embed.WithFooter($"Page {page}/{Math.Ceiling(filtered_cats.Count/20.0)}");
 
         await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, response.AddEmbed(embed.Build()));
+        watch.Stop();
+
+        Logger.LogCommand("show", ctx, Status.SUCCESS, watch);
     }
 
         //Works for a single cat

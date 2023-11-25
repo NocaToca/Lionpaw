@@ -18,7 +18,7 @@ public static class CatParser{
     //The first big thing is that they are proper nouns - that means that they are always capitialized
     //Let's grab all capital words. We will grab the start of sentences, but names also commonly start sentences
     //Let's also count each time a noun appears
-    public static string GetNameBrute(List<string> doc_string){
+    public static string GetNameBrute(IEnumerable<string> doc_string){
         Dictionary<string, int> nouns = new Dictionary<string, int>();
 
         foreach(string s in doc_string){
@@ -33,12 +33,16 @@ public static class CatParser{
         }
 
         //Now we're going to assume the noun used most is the name. Niave, but it should be true
+        //Also, we're going to ignore any and all pronouns
+        string[] ignore = {" they ", " them ", " their ", " theirs ", " theirself ", " he ", " him ", " his ", " himself ", " she ", " her ", " hers ", " herself ", " it ", " its ", " itself "};
         string noun = "";
         int max = 0;
         foreach(KeyValuePair<string, int> pair in nouns){
-            if(pair.Value > max){
-                noun = pair.Key;
-                max = pair.Value;
+            if(!Regex.Match(pair.Key, string.Join("|", ignore)).Success){
+                if(pair.Value > max){
+                    noun = pair.Key;
+                    max = pair.Value;
+                }
             }
         }
         return noun;

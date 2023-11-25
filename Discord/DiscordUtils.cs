@@ -42,9 +42,11 @@ public static class DiscordUtils{
                 return channel;
             }
         }
+        #pragma warning disable 
         if(channel == null){
             channel =  await guild.CreateTextChannelAsync(channel_name);
         }
+        #pragma warning restore
 
         DiscordRole role = guild.GetRole(guild.Id);
 

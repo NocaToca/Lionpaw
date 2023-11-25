@@ -17,6 +17,12 @@ public enum CatParams{
 
 }
 
+public enum Status{
+    SUCCESS,
+    ERROR,
+    FAILURE
+}
+
 public enum Gender{
     [ChoiceName("Male (He/Him)")]
     male_one,
@@ -35,6 +41,31 @@ public enum Gender{
     [ChoiceName("Other! :3")]
     other,
     None
+}
+
+public static class GenderExtensions{
+    public static string CustomToString(this Gender gender){
+        switch(gender){
+            case Gender.male_one:
+                return "Male (He/Him)";
+            case Gender.male_two:
+                return "Male (He/They)";
+            case Gender.female_one:
+                return "Female (She/Her)";
+            case Gender.female_two:
+                return "Female (She/They)";
+            case Gender.non_binary:
+                return "Non-binary (They/Them)";
+            case Gender.non_binary_two:
+                return "Non-binary (It/Its)";
+            case Gender.female_three:
+                return "Femme Aligned (She/It)";
+            default:
+                return "Other (Please ask!)";
+
+        }
+    }
+
 }
 
 public enum Rank{

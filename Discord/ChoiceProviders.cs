@@ -15,12 +15,15 @@ public class CatChoiceProvider : IChoiceProvider{
             choices.Add(new DiscordApplicationCommandOptionChoice(cat.GetName(), cat.GetName()));
         }
     }
+
+    #pragma warning disable 1998
     public async Task<IEnumerable<DiscordApplicationCommandOptionChoice>> Provider(){
 
         RefreshDatabase();
 
         return choices;
     }
+    #pragma warning restore
 
     
 

@@ -9,6 +9,7 @@ public class RegisterCommands : ApplicationCommandModule{
 
     [SlashCommand("create", "Creates an account to record stats!")]
     public async Task CreateAccount(InteractionContext ctx){
+        Status status = Status.ERROR;
 
         if(RoleplayDatabase.NewUser(ctx.User.Id)){
             DiscordEmbedBuilder embed = new DiscordEmbedBuilder(){
@@ -23,23 +24,36 @@ public class RegisterCommands : ApplicationCommandModule{
             embed.WithDescription(description);
 
             await ctx.CreateResponseAsync(embed, true);
+            status = Status.SUCCESS;
         } else {
             await ctx.CreateResponseAsync("You already are registered!", true);
+            status = Status.FAILURE;
         }
+
+        Logger.LogCommand("create", ctx, status);
     }
 
     [SlashCommand("unregister", "Deletes your account from the database")]
     public async Task Unregister(InteractionContext ctx){
 
+        Status status = Status.ERROR;
+
         if(RoleplayDatabase.Unregister(ctx.User.Id)){
             await ctx.CreateResponseAsync("Unregistered!", true);
+            status = Status.SUCCESS;
         } else {
             await ctx.CreateResponseAsync("I couldn't find you within my database. You probably aren't registered!", true);
+            status = Status.FAILURE;
         }
+
+        Logger.LogCommand("unregister", ctx, status);
     }
 
     [SlashCommand("stats", "Shows your roleplay stats!")]
     public async Task ShowStats(InteractionContext ctx){
+
+        Status status = Status.ERROR;
+
         if(RoleplayDatabase.IsUser(ctx.User.Id)){
             RoleplayStatistics? statistics = RoleplayDatabase.LoadStats(ctx.User.Id);
             if(statistics == null){
@@ -63,7 +77,13 @@ public class RegisterCommands : ApplicationCommandModule{
             basic_description = $"Total number of replies: {statistics.Value.number_of_replies}\n";
             basic_description += $"Average reply length: {statistics.Value.average_reply_length:F2}\n";
             basic_description += $"Longest reply length: {statistics.Value.longest_message_length}\n";
-            basic_description += $"Favorite character: (To be implemented)!";
+            string name = "N/A";
+            try{
+                name = statistics.Value.favorite_character.OrderByDescending(kv => kv.Value).Take(1).ElementAt(0).Key;
+            }catch(Exception e){
+                Logger.Error(e.Message);
+            }
+            basic_description += $"Favorite character: {name}!";
 
             embed.AddField("__Replies__", basic_description);
 
@@ -95,19 +115,39 @@ public class RegisterCommands : ApplicationCommandModule{
                 this.alliteration_score = alliteration_data.alliteration_score;
             }
             */
+            long times_used_period = 0, times_used_comman = 0, times_used_question = 0, times_used_exclamation = 0;
+            try{
+                times_used_period = statistics.Value.punctionation_counter['.'];
+            }catch(Exception e){}finally{
+            }
+            try{
+                times_used_comman = statistics.Value.punctionation_counter[','];
+            }catch(Exception e){}finally{
+            }
+            try{
+                times_used_question = statistics.Value.punctionation_counter['?'];
+            }catch(Exception e){}finally{
+            }
+            try{
+                times_used_exclamation = statistics.Value.punctionation_counter['!'];
+            }catch(Exception e){}finally{
+            }
+
             string misc_description;
             misc_description = $"Total alliteration score: {statistics.Value.alliteration_score:F2}\n";
-            misc_description += "Puncuations Used: (To be implemented)";
+            misc_description += $"Puncuations Used: \nUsed '.' {times_used_period} times\nUsed ',' {times_used_comman} times\n";
+            misc_description += $"Used '?' {times_used_question} times\nUsed '!' {times_used_exclamation} times";
 
             embed.AddField("__Misc Stats__", misc_description);
             embed.WithThumbnail(ctx.User.AvatarUrl);
 
             await ctx.CreateResponseAsync(DSharpPlus.InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embed.Build()));
 
-
+            status = Status.SUCCESS;
         } else {
             await ctx.CreateResponseAsync(DSharpPlus.InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("You don't seem to be registered! Use /create to start tracking stats!"));
         }
-    }
 
+        Logger.LogCommand("stats", ctx, status);
+    }
 }

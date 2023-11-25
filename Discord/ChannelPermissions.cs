@@ -123,7 +123,9 @@ namespace Lionpaw{
         [ChoiceName("Welcome")]
         WELCOME,
         [ChoiceName("Goodbye")]
-        GOODBYE
+        GOODBYE,
+        [ChoiceName("Send Weather Events")]
+        SEND_WEATHER
     }
 
     [JsonObject]
@@ -141,6 +143,7 @@ namespace Lionpaw{
         public const ulong GOODBYE = 1 << ((int)PermissionType.GOODBYE);
         public const ulong RESPOND = 1 << ((int)PermissionType.RESPOND);
         public const ulong SHOW_COMMANDS = 1 << ((int)PermissionType.SHOW_COMMANDS);
+        public const ulong SEND_WEATHER = 1 << ((int)PermissionType.SEND_WEATHER);
 
         [JsonConstructor]
         public ChannelPermissions(ulong permission){
@@ -152,7 +155,9 @@ namespace Lionpaw{
         }
 
         public void AddPermission(PermissionType type){
+            #pragma warning disable 0675
             permission = (permission | (ulong)(1 << ((int)type)));
+            #pragma warning restore
         }
 
         public bool HasPermission(PermissionType type){
@@ -173,7 +178,7 @@ namespace Lionpaw{
                     }
                 }
             }catch(Exception e){
-
+                Logger.Error(e.Message);
             }
             return types;
         }

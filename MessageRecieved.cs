@@ -41,8 +41,7 @@ public partial class Bot{
 
             }
 
-        }catch (Exception e){
-
+        }catch(Exception e){}finally{
         }
     }
 

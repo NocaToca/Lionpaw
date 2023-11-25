@@ -38,8 +38,7 @@ public partial class Bot{
 
             await goodbye.SendMessageAsync($"{user_name} has left the server. May the stars grant them safe travels.");
 
-        }catch(Exception e){
-            //We don't have goodbye set up
+        }finally{
         }
     }
 
@@ -89,10 +88,14 @@ public partial class Bot{
 
             await welcome.SendMessageAsync(embed.Build());
 
-        }catch(Exception e){
-            //Welcome settings not set up
+        }finally{
         }
 
+    }
+
+    private Task ClientError(DiscordClient sender, ClientErrorEventArgs args){
+        Logger.Log($"Error in event handler: {args.Exception.Message} found in {args.EventName}.");
+        return Task.CompletedTask;
     }
 
     
@@ -100,6 +103,7 @@ public partial class Bot{
     private Task OnReady(DiscordClient sender, ReadyEventArgs e){
 
         Console.WriteLine("Bot Ready!");
+
 
         return Task.CompletedTask;
 
