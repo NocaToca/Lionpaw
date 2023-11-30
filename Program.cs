@@ -1,16 +1,10 @@
-﻿
-internal class Launch{
+﻿// See https://aka.ms/new-console-template for more information
+using Lionpaw;
+public static class Program{
 
-    static void Main(string[] args){
-        DocsHandler.Run();
-        SlidesHandler.Run();
-        RunBot();
+    public static void Main(string [] args){
+        Lionpaw.Lionpaw lionpaw = new Lionpaw.Lionpaw();
+        lionpaw.RunLionpaw().GetAwaiter().GetResult();
     }
-    static void RunBot(){
-        // //The bot declaration
-        Bot bot = new Bot();
-        
-        // //Runs the actual bot
-        bot.RunBotAsync().GetAwaiter().GetResult();
-    }
+
 }

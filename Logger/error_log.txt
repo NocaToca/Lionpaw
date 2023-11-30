@@ -1,0 +1,2 @@
+ERROR (11/28/2023 5:42:00 PM): Could not convert string 'ADD' to dictionary key type 'Lionpaw.Commands.Command'. Create a TypeConverter to convert from the string to the key type object. Path 'command_options.ADD', line 1, position 435.
+
